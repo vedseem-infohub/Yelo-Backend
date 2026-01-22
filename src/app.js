@@ -22,6 +22,7 @@ const allowedOrigins = [
   "https://yeloindia.com",
   "http://yeloindia.com",
   // Vercel deployments
+  "https://yelo-admin-drab.vercel.app", //new
   "https://yelo-wheat.vercel.app",
   "https://yelo-admin-rose.vercel.app",
   // Add any other Vercel preview URLs if needed
