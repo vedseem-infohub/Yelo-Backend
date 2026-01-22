@@ -1,3 +1,4 @@
+// Yelo-Backend/src/modules/cart/cart.service.js
 const Cart = require("./cart.model")
 const Product = require("../product/product.model")
 const Vendor = require("../vendors/vendors.model")
@@ -63,7 +64,6 @@ async function addToCart(userId, productId, quantity = 1, size = null, color = n
     })
   }
 
-  // 🟢 Check if product already exists with same size and color
   const existingItem = cart.items.find(
     item => 
       item.productId.toString() === productId &&
@@ -88,9 +88,6 @@ async function addToCart(userId, productId, quantity = 1, size = null, color = n
   return cart
 }
 
-/**
- * UPDATE CART ITEM (increase / decrease / remove)
- */
 async function updateCartItem(userId, productId, quantity, size = null, color = null) {
   const cart = await Cart.findOne({ userId })
 
@@ -105,11 +102,11 @@ async function updateCartItem(userId, productId, quantity, size = null, color = 
 
   if (itemIndex === -1) return cart
 
-  // ❌ Remove item
+  //  Remove item
   if (quantity <= 0) {
     cart.items.splice(itemIndex, 1)
   } 
-  // ✅ Update quantity
+  // Update quantity
   else {
     cart.items[itemIndex].quantity = quantity
     if (size) cart.items[itemIndex].size = size

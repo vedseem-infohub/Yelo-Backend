@@ -8,20 +8,17 @@ const productSchema = new mongoose.Schema(
       trim: true
     },
 
-    // base slug from product name (not unique)
-    // Auto-generated from name if not provided
+
     baseSlug: {
       type: String,
-      required: false, // Will be auto-generated in pre-validate hook
+      required: false, 
       lowercase: true,
       trim: true
     },
 
-    // FINAL slug used in URL (unique)
-    // Auto-generated from baseSlug and vendorSlug if not provided
     slug: {
       type: String,
-      required: false, // Will be auto-generated in pre-validate hook
+      required: false, 
       unique: true,
       index: true,
       lowercase: true,
@@ -60,31 +57,31 @@ const productSchema = new mongoose.Schema(
         index: true
       }
     },
-    
+
     productType: {
-      type: String, // shirt, tshirt, jeans
+      type: String, 
       index: true
     },
-    
+
     subcategory: {
-      type: String, // tshirts, jackets, sneakers (for category pages)
+      type: String, 
       index: true
     },
-    
+
     occasion: {
-      type: [String], // party, office, casual
+      type: [String],
       index: true
     },
-    
+
     material: {
-      type: [String], // cotton, linen, nylon
+      type: [String], 
       index: true
     },
-    
+
     fit: {
-      type: String // slim, regular, loose
+      type: String 
     },
-    
+
     category: {
       type: String,
       index: true
@@ -156,11 +153,9 @@ const productSchema = new mongoose.Schema(
       index: true
     },
 
-    // vendor identifier
-    // Optional - if not provided, slug will use timestamp for uniqueness
     vendorSlug: {
       type: String,
-      required: false, // Optional - will use timestamp in slug if missing
+      required: false, 
       index: true,
       lowercase: true,
       trim: true
@@ -168,143 +163,132 @@ const productSchema = new mongoose.Schema(
   },
   { timestamps: true }
 )
-
-// ========================================
-// COMPOUND INDEXES FOR OPTIMAL QUERY PERFORMANCE
-// Following ESR Rule: Equality → Sort → Range
-// These indexes prevent "Sort exceeded memory limit" errors
-// ========================================
-
-// Category-based indexes (most common queries)
-productSchema.index({ category: 1, isActive: 1, price: 1 }, { 
+productSchema.index({ category: 1, isActive: 1, price: 1 }, {
   name: 'category_isActive_price',
-  background: true 
+  background: true
 })
 
-productSchema.index({ category: 1, isActive: 1, createdAt: -1 }, { 
+productSchema.index({ category: 1, isActive: 1, createdAt: -1 }, {
   name: 'category_isActive_createdAt',
-  background: true 
+  background: true
 })
 
-productSchema.index({ category: 1, isActive: 1, rating: -1 }, { 
+productSchema.index({ category: 1, isActive: 1, rating: -1 }, {
   name: 'category_isActive_rating',
-  background: true 
+  background: true
 })
 
-productSchema.index({ category: 1, isActive: 1, reviews: -1, rating: -1 }, { 
+productSchema.index({ category: 1, isActive: 1, reviews: -1, rating: -1 }, {
   name: 'category_isActive_popular',
-  background: true 
+  background: true
 })
 
-// Brand-based indexes (sparse - brand can be null/undefined)
-productSchema.index({ brand: 1, isActive: 1, price: 1 }, { 
+productSchema.index({ brand: 1, isActive: 1, price: 1 }, {
   name: 'brand_isActive_price',
   background: true,
-  sparse: true 
+  sparse: true
 })
 
-productSchema.index({ brand: 1, isActive: 1, createdAt: -1 }, { 
+productSchema.index({ brand: 1, isActive: 1, createdAt: -1 }, {
   name: 'brand_isActive_createdAt',
   background: true,
-  sparse: true 
+  sparse: true
 })
 
-productSchema.index({ brand: 1, isActive: 1, rating: -1 }, { 
+productSchema.index({ brand: 1, isActive: 1, rating: -1 }, {
   name: 'brand_isActive_rating',
   background: true,
-  sparse: true 
+  sparse: true
 })
 
-// Category + Brand combined indexes
-productSchema.index({ category: 1, brand: 1, isActive: 1, price: 1 }, { 
+productSchema.index({ category: 1, brand: 1, isActive: 1, price: 1 }, {
   name: 'category_brand_isActive_price',
   background: true,
-  sparse: true 
+  sparse: true
 })
 
-// Global indexes (for queries without category/brand filter)
-productSchema.index({ isActive: 1, price: 1 }, { 
+productSchema.index({ isActive: 1, price: 1 }, {
   name: 'isActive_price',
-  background: true 
+  background: true
 })
 
-productSchema.index({ isActive: 1, createdAt: -1 }, { 
+productSchema.index({ isActive: 1, createdAt: -1 }, {
   name: 'isActive_createdAt',
-  background: true 
+  background: true
 })
 
-productSchema.index({ isActive: 1, rating: -1 }, { 
+productSchema.index({ isActive: 1, rating: -1 }, {
   name: 'isActive_rating',
-  background: true 
+  background: true
 })
 
 // Trending/Popular products
-productSchema.index({ isTrending: 1, isActive: 1, reviews: -1, rating: -1 }, { 
+productSchema.index({ isTrending: 1, isActive: 1, reviews: -1, rating: -1 }, {
   name: 'isTrending_isActive_popular',
-  background: true 
+  background: true
 })
 
 // Subcategory indexes (for category/subcategory pages)
-productSchema.index({ category: 1, subcategory: 1, isActive: 1, price: 1 }, { 
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, price: 1 }, {
   name: 'category_subcategory_isActive_price_low',
-  background: true 
+  background: true
 })
 
-productSchema.index({ category: 1, subcategory: 1, isActive: 1, price: -1 }, { 
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, price: -1 }, {
   name: 'category_subcategory_isActive_price_high',
-  background: true 
+  background: true
 })
 
-productSchema.index({ category: 1, subcategory: 1, isActive: 1, createdAt: -1 }, { 
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, createdAt: -1 }, {
   name: 'category_subcategory_isActive_createdAt',
-  background: true 
+  background: true
 })
 
-productSchema.index({ category: 1, subcategory: 1, isActive: 1, rating: -1 }, { 
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, rating: -1 }, {
   name: 'category_subcategory_isActive_rating',
-  background: true 
+  background: true
 })
 
-productSchema.index({ category: 1, subcategory: 1, isActive: 1, reviews: -1, rating: -1 }, { 
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, reviews: -1, rating: -1 }, {
   name: 'category_subcategory_isActive_popular',
-  background: true 
+  background: true
 })
 
-productSchema.index({ assignedShops: 1, isActive: 1, price: 1 }, { 
+productSchema.index({ assignedShops: 1, isActive: 1, price: 1 }, {
   name: 'assignedShops_isActive_price',
-  background: true 
+  background: true
 })
 
-productSchema.index({ assignedShops: 1, isActive: 1, createdAt: -1 }, { 
+productSchema.index({ assignedShops: 1, isActive: 1, createdAt: -1 }, {
   name: 'assignedShops_isActive_createdAt',
-  background: true 
+  background: true
 })
 
-productSchema.index({ assignedShops: 1, isActive: 1, rating: -1 }, { 
+productSchema.index({ assignedShops: 1, isActive: 1, rating: -1 }, {
   name: 'assignedShops_isActive_rating',
-  background: true 
+  background: true
 })
 
 // AssignedShops + Popular Sorting (for shop pages - reviews + rating)
-productSchema.index({ assignedShops: 1, isActive: 1, reviews: -1, rating: -1 }, { 
+productSchema.index({ assignedShops: 1, isActive: 1, reviews: -1, rating: -1 }, {
   name: 'assignedShops_isActive_popular',
-  background: true 
+  background: true
 })
 
 // Discount-based compound indexes for offers queries
 // Following ESR rule: Equality (isActive) → Sort/Range (discount/price)
 
 // Index for products with discount field: helps with filtering discount > 10 and sorting
-productSchema.index({ isActive: 1, discount: -1 }, { 
+productSchema.index({ isActive: 1, discount: -1 }, {
   name: 'isActive_discount_desc',
-  background: true 
+  background: true
 })
 
 // Partial index for offers: only indexes active products with discount > 10 (very efficient for offers queries)
-productSchema.index({ isActive: 1, discount: -1 }, { 
+productSchema.index({ isActive: 1, discount: -1 }, {
   name: 'isActive_discount_gt_10_partial',
   background: true,
-  partialFilterExpression: { 
+  partialFilterExpression: {
     isActive: true,
     discount: { $gt: 10 }
   }
@@ -312,22 +296,22 @@ productSchema.index({ isActive: 1, discount: -1 }, {
 
 // Index for products using originalPrice/price calculation: helps with filtering and sorting
 // originalPrice: -1 helps with sorting by calculated discount (higher originalPrice = higher discount potential)
-productSchema.index({ isActive: 1, originalPrice: -1, price: 1 }, { 
+productSchema.index({ isActive: 1, originalPrice: -1, price: 1 }, {
   name: 'isActive_originalPrice_desc_price_asc',
-  background: true 
+  background: true
 })
 
 // Index for price-based filtering with discount calculation
-productSchema.index({ isActive: 1, price: 1, originalPrice: -1 }, { 
+productSchema.index({ isActive: 1, price: 1, originalPrice: -1 }, {
   name: 'isActive_price_asc_originalPrice_desc',
-  background: true 
+  background: true
 })
 
 // Index for brand filtering in offers (when brand filter is applied)
-productSchema.index({ isActive: 1, brand: 1, discount: -1 }, { 
+productSchema.index({ isActive: 1, brand: 1, discount: -1 }, {
   name: 'isActive_brand_discount_desc',
   background: true,
-  sparse: true 
+  sparse: true
 })
 
 /**
@@ -351,12 +335,17 @@ productSchema.pre("validate", function () {
   // Generate slug as baseSlug-vendorSlug for database uniqueness
   // Frontend will construct vendor-slug/product-slug URLs for SEO
   if (!this.slug) {
+    // Generate a short unique ID (last 6 chars of timestamp in base36)
+    const uniqueId = Date.now().toString(36).slice(-6)
+
     if (this.baseSlug && this.vendorSlug) {
-      this.slug = `${this.baseSlug}-${this.vendorSlug}`
+      this.slug = `${this.baseSlug}-${this.vendorSlug}-${uniqueId}`
     } else if (this.baseSlug) {
-      // If vendorSlug is missing, use baseSlug with timestamp to ensure uniqueness
-      this.slug = `${this.baseSlug}-${Date.now()}`
+      // If vendorSlug is missing, use baseSlug with unique ID
+      this.slug = `${this.baseSlug}-${uniqueId}`
     }
+
+    console.log(`Generated unique slug: ${this.slug}`)
   }
 
   // Ensure slug and baseSlug are set (validation will fail if not)
@@ -369,7 +358,7 @@ productSchema.pre("validate", function () {
 
   // Assign majorCategory based on brand presence: if brand exists, it's LUXURY, otherwise AFFORDABLE
   this.majorCategory = (this.brand && this.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
-  
+
   // Auto-populate subcategory from productType if not set
   if (this.productType && !this.subcategory) {
     // Normalize productType to subcategory format
@@ -377,8 +366,44 @@ productSchema.pre("validate", function () {
   }
 })
 
+// Slug deduplication - ensure unique slugs before saving
+productSchema.pre("save", async function (next) {
+  // Only check for duplicates if this is a new document
+  if (!this.isNew) {
+    return next()
+  }
+
+  const Product = this.constructor
+  let baseSlug = this.slug
+  let counter = 1
+  let isUnique = false
+
+  console.log(`Checking slug uniqueness for: ${baseSlug}`)
+
+  while (!isUnique) {
+    try {
+      const existingProduct = await Product.findOne({ slug: this.slug, _id: { $ne: this._id } }).lean()
+
+      if (!existingProduct) {
+        isUnique = true
+        console.log(`Unique slug found: ${this.slug}`)
+      } else {
+        // Slug exists, append counter
+        this.slug = `${baseSlug}-${counter}`
+        counter++
+        console.log(`Slug already exists, trying: ${this.slug}`)
+      }
+    } catch (error) {
+      console.error('Error checking slug uniqueness:', error)
+      return next(error)
+    }
+  }
+
+  next()
+})
+
 // Virtual for SEO-friendly URL format
-productSchema.virtual('seoUrl').get(function() {
+productSchema.virtual('seoUrl').get(function () {
   if (this.vendorSlug && this.baseSlug) {
     return `${this.vendorSlug}/${this.baseSlug}`
   }
@@ -386,11 +411,11 @@ productSchema.virtual('seoUrl').get(function() {
 })
 
 // Auto-assign products to shops after save (create or update)
-productSchema.post('save', async function() {
+productSchema.post('save', async function () {
   try {
     const { assignProductToShops } = require("../assignment/assignment.service")
     await assignProductToShops(this)
-    
+
     // Update category counts in background (non-blocking)
     const { updateCategoryCounts } = require("../category/category.service")
     updateCategoryCounts().catch(err => {
@@ -403,12 +428,12 @@ productSchema.post('save', async function() {
 })
 
 // Auto-assign products to shops after update
-productSchema.post('findOneAndUpdate', async function(doc) {
+productSchema.post('findOneAndUpdate', async function (doc) {
   if (doc) {
     try {
       const { assignProductToShops } = require("../assignment/assignment.service")
       await assignProductToShops(doc)
-      
+
       // Update category counts in background (non-blocking)
       const { updateCategoryCounts } = require("../category/category.service")
       updateCategoryCounts().catch(err => {
@@ -421,7 +446,7 @@ productSchema.post('findOneAndUpdate', async function(doc) {
 })
 
 // Update category counts after product deletion (for findOneAndDelete, findByIdAndDelete, etc.)
-productSchema.post('findOneAndDelete', async function(doc) {
+productSchema.post('findOneAndDelete', async function (doc) {
   if (doc) {
     try {
       const { updateCategoryCounts } = require("../category/category.service")
@@ -436,7 +461,7 @@ productSchema.post('findOneAndDelete', async function(doc) {
 })
 
 // Update category counts after product removal (for document.remove())
-productSchema.post('remove', async function() {
+productSchema.post('remove', async function () {
   try {
     const { updateCategoryCounts } = require("../category/category.service")
     // Run in background - don't block deletion

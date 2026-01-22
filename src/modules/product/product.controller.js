@@ -8,7 +8,7 @@ exports.getProductCount = async (req, res) => {
   try {
     const totalCount = await Product.countDocuments({})
     const activeCount = await Product.countDocuments({ isActive: true })
-    
+
     res.json({
       success: true,
       total: totalCount,
@@ -46,28 +46,28 @@ exports.getAllProducts = async (req, res) => {
     // Search filter - fuzzy search in name, brand, category
     if (search && search.trim()) {
       const searchTerm = search.trim()
-      
+
       // Normalize search term: remove hyphens, normalize spaces, handle common variations
       const normalizedSearch = searchTerm
         .replace(/[-_]/g, ' ')  // Replace hyphens and underscores with spaces
         .replace(/\s+/g, ' ')    // Normalize multiple spaces to single space
         .trim()
-      
+
       // Create a flexible regex pattern that matches:
       // - With or without spaces (sweatshirt, sweat shirt)
       // - With or without hyphens (sweat-shirt, sweat shirt)
       // - Word parts in any order (sweat shirt matches "sweatshirt")
       const words = normalizedSearch.split(/\s+/).filter(w => w.length > 0)
-      
+
       // Pattern: match all words with optional spaces/hyphens/underscores between them
       // This handles: "sweatshirt", "sweat shirt", "sweat-shirt", "sweat_shirt", etc.
       const fuzzyPattern = words.length > 1
         ? new RegExp(words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[-_\\s]*'), 'i')
         : new RegExp(normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      
+
       // Also create pattern without spaces (for matching compound words)
       const noSpacePattern = new RegExp(normalizedSearch.replace(/\s+/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      
+
       // Build $or query with both patterns
       query.$or = [
         { name: fuzzyPattern },
@@ -115,9 +115,9 @@ exports.getAllProducts = async (req, res) => {
     console.log('📊 getAllProducts query:', JSON.stringify(query, null, 2))
     console.log('📊 Sort options:', JSON.stringify(sortQuery, null, 2))
     console.log('📊 Pagination:', { page, limit, skip })
-    
+
     const queryStartTime = Date.now()
-    
+
     // Add query timeout (30 seconds) to prevent hanging
     const products = await Product.find(query)
       .allowDiskUse(true)
@@ -146,9 +146,9 @@ exports.getAllProducts = async (req, res) => {
         pages: Math.ceil(total / Number(limit))
       }
     }
-    
+
     console.log(`✅ Returning ${products.length} products, total: ${total}`)
-    
+
     res.json(response)
   } catch (err) {
     // Log full error details for debugging
@@ -158,7 +158,7 @@ exports.getAllProducts = async (req, res) => {
       code: err.code,
       stack: err.stack?.split('\n').slice(0, 3).join('\n')
     })
-    
+
     // Handle timeout errors gracefully
     if (err.message && (err.message.includes('timeout') || err.message.includes('timed out') || err.name === 'MongoServerError')) {
       console.error('Product query timeout/error:', err.message)
@@ -168,7 +168,7 @@ exports.getAllProducts = async (req, res) => {
         error: 'TIMEOUT'
       })
     }
-    
+
     // Handle sort memory errors
     if (err.message && err.message.includes('Sort exceeded memory limit')) {
       console.error('⚠️ Sort memory limit error - indexes may still be building')
@@ -179,7 +179,7 @@ exports.getAllProducts = async (req, res) => {
         hint: 'Indexes are being created in the background. This should resolve automatically.'
       })
     }
-    
+
     res.status(500).json({
       success: false,
       message: err.message || 'Internal server error'
@@ -217,9 +217,9 @@ exports.getProductBySlug = async (req, res) => {
 
     // If not found, try exact slug match (backward compatibility)
     if (!product) {
-      product = await Product.findOne({ 
-        slug: slug.toLowerCase(), 
-        isActive: true 
+      product = await Product.findOne({
+        slug: slug.toLowerCase(),
+        isActive: true
       }).lean()
     }
 
@@ -233,8 +233,8 @@ exports.getProductBySlug = async (req, res) => {
     // Add SEO-friendly URL to response
     const responseData = {
       ...product,
-      seoUrl: product.vendorSlug && product.baseSlug 
-        ? `${product.vendorSlug}/${product.baseSlug}` 
+      seoUrl: product.vendorSlug && product.baseSlug
+        ? `${product.vendorSlug}/${product.baseSlug}`
         : product.slug
     }
 
@@ -288,8 +288,8 @@ exports.getProductsByVendor = async (req, res) => {
     // Add SEO-friendly URLs to products
     const productsWithSeoUrl = products.map(product => ({
       ...product,
-      seoUrl: product.vendorSlug && product.baseSlug 
-        ? `${product.vendorSlug}/${product.baseSlug}` 
+      seoUrl: product.vendorSlug && product.baseSlug
+        ? `${product.vendorSlug}/${product.baseSlug}`
         : product.slug
     }))
 
@@ -357,8 +357,8 @@ exports.getProductsByShop = async (req, res) => {
 // GET products by category and subcategory (paginated)
 exports.getProductsByCategory = async (req, res) => {
   try {
-    const { 
-      categorySlug, 
+    const {
+      categorySlug,
       subcategorySlug,
       page = 1,
       limit = 6,
@@ -383,34 +383,34 @@ exports.getProductsByCategory = async (req, res) => {
     }
 
     const query = { isActive: true }
-    
+
     // Build category match conditions - handle slug to name conversion
     if (categorySlug) {
       const categoryConditions = [
         { category: categorySlug },
         { category: { $regex: new RegExp(`^${categorySlug}$`, 'i') } }
       ]
-      
+
       // Convert slug to name variations (e.g., "women's-wear" -> "Women's Wear", "womens-wear" -> "Women's Wear")
       const categoryNameFromSlug = categorySlug
         .replace(/-/g, ' ')  // Replace hyphens with spaces
         .replace(/\b\w/g, l => l.toUpperCase())  // Capitalize first letter of each word
         .replace(/Womens/g, "Women's")  // Handle "womens" -> "Women's"
         .replace(/Mens/g, "Men's")  // Handle "mens" -> "Men's"
-      
+
       categoryConditions.push(
         { category: { $regex: new RegExp(`^${categoryNameFromSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
       )
-      
+
       // Also try direct name matching with various formats
       categoryConditions.push(
         { category: { $regex: new RegExp(categorySlug.replace(/[-_]/g, '[\\s_-]*'), 'i') } }
       )
-      
+
       query.$or = categoryConditions
     }
-    
-      // Add subcategory filter - handle slug to name conversion and partial matching
+
+    // Add subcategory filter - handle slug to name conversion and partial matching
     if (subcategorySlug) {
       const subcategoryConditions = [
         { subcategory: subcategorySlug },
@@ -418,19 +418,19 @@ exports.getProductsByCategory = async (req, res) => {
         { productType: subcategorySlug },
         { productType: { $regex: new RegExp(`^${subcategorySlug}$`, 'i') } }
       ]
-      
+
       // Convert slug to name (e.g., "womens-jackets" -> "Jackets & Coats" or "Jackets")
       const subcategoryNameFromSlug = subcategorySlug
         .replace(/-/g, ' ')  // Replace hyphens with spaces
         .replace(/\b\w/g, l => l.toUpperCase())  // Capitalize first letter of each word
         .replace(/Womens |Mens |Women S |Men S /g, '')  // Remove "Womens " or "Mens " prefix
-      
+
       // Try exact name match
       subcategoryConditions.push(
         { subcategory: { $regex: new RegExp(`^${subcategoryNameFromSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
         { productType: { $regex: new RegExp(`^${subcategoryNameFromSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
       )
-      
+
       // Try partial matching (e.g., "jackets" matches "Jackets & Coats")
       const subcategoryWords = subcategoryNameFromSlug.split(/\s+/).filter(w => w.length > 2)
       if (subcategoryWords.length > 0) {
@@ -442,7 +442,7 @@ exports.getProductsByCategory = async (req, res) => {
           )
         })
       }
-      
+
       // IMPORTANT: Ensure category filter is maintained when filtering by subcategory
       // This prevents men's-wear/jacket from showing women's jackets
       // Combine with category conditions if they exist - use $and to ensure both category AND subcategory match
@@ -520,26 +520,29 @@ exports.getProductsByCategory = async (req, res) => {
   }
 }
 
-// GET trending products
+// GET trending products - shows recent active products
 exports.getTrendingProducts = async (req, res) => {
   try {
     const { limit = 20 } = req.query
 
+    console.log(`Fetching trending products (limit: ${limit})...`)
+
     const products = await Product.find({
-      isTrending: true,
       isActive: true
     })
       .allowDiskUse(true)
       .maxTimeMS(30000) // 30 second timeout
-      .sort({ reviews: -1, rating: -1 })
+      .sort({ createdAt: -1 }) // Sort by newest first
       .limit(Number(limit))
       .lean()
+
+    console.log(`Found ${products.length} trending products`)
 
     // Add SEO-friendly URLs to products
     const productsWithSeoUrl = products.map(product => ({
       ...product,
-      seoUrl: product.vendorSlug && product.baseSlug 
-        ? `${product.vendorSlug}/${product.baseSlug}` 
+      seoUrl: product.vendorSlug && product.baseSlug
+        ? `${product.vendorSlug}/${product.baseSlug}`
         : product.slug
     }))
 
@@ -548,6 +551,7 @@ exports.getTrendingProducts = async (req, res) => {
       data: productsWithSeoUrl
     })
   } catch (err) {
+    console.error('Error fetching trending products:', err)
     res.status(500).json({
       success: false,
       message: err.message
@@ -571,7 +575,7 @@ exports.createProduct = async (req, res) => {
 
     // Use service to create product (which auto-assigns shops)
     const product = await createProductService(req.body)
-    
+
     res.status(201).json({
       success: true,
       data: product
@@ -595,7 +599,7 @@ exports.createBulkProducts = async (req, res) => {
 
     // Ensure isActive is set for all products and auto-create categories
     const createdProducts = []
-    
+
     for (const productData of req.body) {
       try {
         if (productData.isActive === undefined) {
@@ -637,33 +641,33 @@ exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params
     const updateData = req.body
-    
+
     // If brand is being updated, set majorCategory automatically
     if (updateData.brand !== undefined) {
       updateData.majorCategory = (updateData.brand && updateData.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
     }
-    
+
     // Find and update product
     const product = await Product.findByIdAndUpdate(
       id,
       { $set: updateData },
       { new: true, runValidators: true }
     )
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
         message: "Product not found"
       })
     }
-    
+
     // Reassign to shops if price/category/brand/isTrending changed
     // Also reassign if brand changes (affects majorCategory)
     if (updateData.price || updateData.category || updateData.brand || updateData.majorCategory || updateData.isTrending !== undefined) {
       const { assignProductToShops } = require("../assignment/assignment.service")
       await assignProductToShops(product)
     }
-    
+
     // Update category counts if category changed
     if (updateData.category) {
       const { updateCategoryCounts } = require("../category/category.service")
@@ -671,7 +675,7 @@ exports.updateProduct = async (req, res) => {
         console.error('Error updating category counts:', err.message)
       })
     }
-    
+
     res.json({
       success: true,
       data: product
@@ -688,22 +692,22 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
   try {
     const { id } = req.params
-    
+
     const product = await Product.findByIdAndDelete(id)
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
         message: "Product not found"
       })
     }
-    
+
     // Update category counts
     const { updateCategoryCounts } = require("../category/category.service")
     updateCategoryCounts().catch(err => {
       console.error('Error updating category counts after delete:', err.message)
     })
-    
+
     res.json({
       success: true,
       message: "Product deleted successfully"
@@ -721,20 +725,20 @@ exports.patchProduct = async (req, res) => {
   try {
     const { id } = req.params
     const updateData = req.body
-    
+
     const product = await Product.findByIdAndUpdate(
       id,
       { $set: updateData },
       { new: true, runValidators: true }
     )
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
         message: "Product not found"
       })
     }
-    
+
     res.json({
       success: true,
       data: product
