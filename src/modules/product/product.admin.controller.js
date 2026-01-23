@@ -6,12 +6,12 @@ const seedShops = require("../shop/shop.seed")
 async function deleteAllProducts(req, res) {
   try {
     const result = await Product.deleteMany({})
-    
+
     // Update category counts in background (non-blocking)
     updateCategoryCounts().catch(err => {
       console.error('Error updating category counts after delete all:', err.message)
     })
-    
+
     res.json({ success: true, message: `Deleted ${result.deletedCount} products.` })
   } catch (error) {
     console.error("Error deleting all products:", error)
@@ -26,12 +26,12 @@ async function deleteProductsByCriteria(req, res) {
       return res.status(400).json({ success: false, message: "Deletion criteria cannot be empty." })
     }
     const result = await Product.deleteMany(criteria)
-    
+
     // Update category counts in background (non-blocking)
     updateCategoryCounts().catch(err => {
       console.error('Error updating category counts after delete by criteria:', err.message)
     })
-    
+
     res.json({ success: true, message: `Deleted ${result.deletedCount} products matching criteria.`, criteria })
   } catch (error) {
     console.error("Error deleting products by criteria:", error)
@@ -62,7 +62,7 @@ async function reassignAndSyncProducts(req, res) {
   try {
     // First ensure shops are seeded
     await seedShops()
-    
+
     const products = await Product.find({ isActive: true })
     let assignedCount = 0
     let categoryCount = 0
@@ -73,7 +73,7 @@ async function reassignAndSyncProducts(req, res) {
         // Reassign to shops
         const assignedShops = await assignProductToShops(product)
         assignedCount++
-        
+
         if (assignedShops.length > 0) {
           assignmentDetails.push({
             productId: product._id,
@@ -120,11 +120,11 @@ async function migrateCategories(req, res) {
   try {
     const { migrateProductCategories } = require("./product.migration")
     const result = await migrateProductCategories()
-    
+
     // Reassign products to shops after migration
     const { reassignAllProducts } = require("../assignment/assignment.service")
     await reassignAllProducts()
-    
+
     // Sync categories
     const { ensureCategory, updateCategoryCounts } = require("../category/category.service")
     const products = await Product.find({ isActive: true })
@@ -135,7 +135,7 @@ async function migrateCategories(req, res) {
       }
     }
     await updateCategoryCounts()
-    
+
     res.json({
       success: true,
       message: `Migrated ${result.updatedCount} products. Categories and subcategories fixed.`,
@@ -154,7 +154,7 @@ async function migrateCategories(req, res) {
 // Populate subcategory field from productType for all products
 async function populateSubcategories(req, res) {
   try {
-    const products = await Product.find({ 
+    const products = await Product.find({
       isActive: true,
       productType: { $exists: true, $ne: null },
       $or: [
@@ -163,9 +163,9 @@ async function populateSubcategories(req, res) {
         { subcategory: "" }
       ]
     })
-    
+
     let updatedCount = 0
-    
+
     for (const product of products) {
       if (product.productType) {
         const subcategory = product.productType.toLowerCase().replace(/\s+/g, '-')
@@ -176,7 +176,7 @@ async function populateSubcategories(req, res) {
         updatedCount++
       }
     }
-    
+
     res.json({
       success: true,
       message: `Populated subcategory for ${updatedCount} products.`,
@@ -206,7 +206,7 @@ async function createCategoriesFromProducts(req, res) {
           // Assign majorCategory based on brand presence: if brand exists, it's LUXURY, otherwise AFFORDABLE
           const majorCategory = product.majorCategory || ((product.brand && product.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE")
           await ensureCategory(product.category, product.productType, majorCategory)
-          
+
           if (!categoriesCreated.has(product.category)) {
             categoriesCreated.add(product.category)
             count++
@@ -242,7 +242,7 @@ async function checkIndexes(req, res) {
   try {
     const { ensureProductIndexes } = require('./ensure-indexes')
     const result = await ensureProductIndexes()
-    
+
     res.json({
       success: true,
       message: 'Indexes checked and ensured',
@@ -261,26 +261,26 @@ async function checkIndexes(req, res) {
 async function getProductDebugData(req, res) {
   try {
     const { limit = 20, productId, category, productType } = req.query
-    
+
     const query = { isActive: true }
     if (productId) query._id = productId
     if (category) query.category = category
     if (productType) query.productType = productType
-    
+
     const products = await Product.find(query)
       .limit(Number(limit))
       .lean()
-    
+
     const Shop = require("../shop/shop.model")
     const allShops = await Shop.find({}).lean()
-    
+
     const debugData = products.map(product => {
       // Find which shops this product should be assigned to
       const matchingShops = allShops
         .filter(shop => {
           // Check majorCategory match
           if (shop.majorCategory !== product.majorCategory) return false
-          
+
           // Check criteria match
           const matchesShopCriteria = require("../assignment/criteriaMatcher")
           return matchesShopCriteria(product, shop.criteria)
@@ -291,7 +291,7 @@ async function getProductDebugData(req, res) {
           route: shop.route,
           criteria: shop.criteria
         }))
-      
+
       return {
         _id: product._id,
         name: product.name,
@@ -305,11 +305,11 @@ async function getProductDebugData(req, res) {
         assignedShops: product.assignedShops || [],
         shouldBeAssignedTo: matchingShops.map(s => s.slug),
         matchingShops: matchingShops,
-        isCorrectlyAssigned: JSON.stringify((product.assignedShops || []).sort()) === 
-                            JSON.stringify(matchingShops.map(s => s.slug).sort())
+        isCorrectlyAssigned: JSON.stringify((product.assignedShops || []).sort()) ===
+          JSON.stringify(matchingShops.map(s => s.slug).sort())
       }
     })
-    
+
     res.json({
       success: true,
       totalProducts: products.length,

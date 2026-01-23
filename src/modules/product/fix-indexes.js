@@ -17,11 +17,11 @@ async function fixIndexes() {
     await connectDB()
 
     const collection = Product.collection
-    
+
     // Get all current indexes
     const indexes = await collection.getIndexes()
     const indexNames = Object.keys(indexes)
-   
+
 
     // List of old/incorrect index names to drop
     const indexesToDrop = [

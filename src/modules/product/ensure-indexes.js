@@ -4,22 +4,22 @@ const Product = require('./product.model')
 
 async function ensureProductIndexes() {
   try {
-    
+
     try {
       const indexes = await Product.collection.getIndexes()
       const indexNames = Object.keys(indexes)
-      
+
       const indexesToDrop = [
-        'category_subcategorry_isActive_price', 
-        'category_subcategory_isActive_price' 
+        'category_subcategorry_isActive_price',
+        'category_subcategory_isActive_price'
       ]
-      
+
       for (const oldIndexName of indexesToDrop) {
         if (indexNames.includes(oldIndexName)) {
           try {
             await Product.collection.dropIndex(oldIndexName)
           } catch (dropError) {
-            
+
             if (!dropError.message.includes('index not found')) {
               console.warn(`Could not drop index ${oldIndexName}:`, dropError.message)
             }
@@ -29,7 +29,7 @@ async function ensureProductIndexes() {
     } catch (cleanupError) {
       console.warn(' Error during index cleanup (non-critical):', cleanupError.message)
     }
-    
+
     // Mongoose will automatically create indexes defined in schema
     // But we can explicitly ensure they exist using ensureIndexes()
     try {
@@ -42,11 +42,11 @@ async function ensureProductIndexes() {
         throw ensureError
       }
     }
-    
+
     // List all indexes to verify
     const indexes = await Product.collection.getIndexes()
     const indexNames = Object.keys(indexes)
-    
+
     // Check for our compound indexes
     const expectedIndexes = [
       'category_isActive_price',
@@ -66,15 +66,15 @@ async function ensureProductIndexes() {
       'isActive_createdAt',
       'isActive_rating'
     ]
-    
+
     const missingIndexes = expectedIndexes.filter(name => !indexNames.includes(name))
-    
+
     if (missingIndexes.length > 0) {
       console.warn('Missing indexes:', missingIndexes.join(', '))
     } else {
       console.log(' All expected indexes found!')
     }
-    
+
     return { success: true, indexes: indexNames }
   } catch (error) {
     console.error(' Error ensuring indexes:', error.message)

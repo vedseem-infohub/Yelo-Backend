@@ -65,7 +65,7 @@ async function getProductsByShop({
       $or: [
         { assignedShops: shopSlug },
         // Fallback: include products with brands if they're not assigned (safety measure)
-        { 
+        {
           brand: { $exists: true, $ne: null, $ne: '' }
         }
       ]
@@ -114,16 +114,16 @@ async function getProductsByShop({
   }
 
   const skip = (Number(page) - 1) * Number(limit)
-  
- 
-  
+
+
+
   const total = await Product.countDocuments(query).maxTimeMS(30000)
-  
- 
+
+
 
   const products = await Product.find(query)
     .allowDiskUse(true)
-    .maxTimeMS(30000) 
+    .maxTimeMS(30000)
     .sort(sortQuery)
     .skip(skip)
     .limit(Number(limit))
@@ -133,8 +133,8 @@ async function getProductsByShop({
   // Add SEO-friendly URLs to products
   const productsWithSeoUrl = products.map(product => ({
     ...product,
-    seoUrl: product.vendorSlug && product.baseSlug 
-      ? `${product.vendorSlug}/${product.baseSlug}` 
+    seoUrl: product.vendorSlug && product.baseSlug
+      ? `${product.vendorSlug}/${product.baseSlug}`
       : product.slug
   }))
 
@@ -168,7 +168,7 @@ async function getOffersProducts({
     // Ensure product has either discount field OR originalPrice to calculate discount
     $or: [
       { discount: { $gt: 10 } },
-      { 
+      {
         originalPrice: { $exists: true, $ne: null },
         price: { $exists: true, $ne: null },
         originalPrice: { $gt: 0 },
@@ -302,8 +302,8 @@ async function getOffersProducts({
   // Add SEO-friendly URLs to products
   const productsWithSeoUrl = products.map(product => ({
     ...product,
-    seoUrl: product.vendorSlug && product.baseSlug 
-      ? `${product.vendorSlug}/${product.baseSlug}` 
+    seoUrl: product.vendorSlug && product.baseSlug
+      ? `${product.vendorSlug}/${product.baseSlug}`
       : product.slug
   }))
 

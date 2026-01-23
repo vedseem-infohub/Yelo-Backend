@@ -29,7 +29,7 @@ const categoryMapping = {
   'sweaters': { category: "Men's Wear", subcategory: "sweaters", productType: "Sweater" },
   'tracksuit': { category: "Men's Wear", subcategory: "tracksuits", productType: "Tracksuit" },
   'tracksuits': { category: "Men's Wear", subcategory: "tracksuits", productType: "Tracksuit" },
-  
+
   // Women's Wear
   'dress': { category: "Women's Wear", subcategory: "dresses", productType: "Dress" },
   'dresses': { category: "Women's Wear", subcategory: "dresses", productType: "Dress" },
@@ -41,7 +41,7 @@ const categoryMapping = {
   'kurtas': { category: "Women's Wear", subcategory: "kurtas", productType: "Kurta" },
   'kurta set': { category: "Women's Wear", subcategory: "kurta-sets", productType: "Kurta Set" },
   'kurta sets': { category: "Women's Wear", subcategory: "kurta-sets", productType: "Kurta Set" },
-  
+
   // Footwear
   'shoe': { category: "Footwear", subcategory: "casual-shoes", productType: "Shoe" },
   'shoes': { category: "Footwear", subcategory: "casual-shoes", productType: "Shoe" },
@@ -49,7 +49,7 @@ const categoryMapping = {
   'sneakers': { category: "Footwear", subcategory: "sports-shoes", productType: "Sneaker" },
   'sandal': { category: "Footwear", subcategory: "sandals", productType: "Sandal" },
   'sandals': { category: "Footwear", subcategory: "sandals", productType: "Sandal" },
-  
+
   // Personal Care
   'face wash': { category: "Personal Care", subcategory: "face-care", productType: "Face Wash" },
   'facewash': { category: "Personal Care", subcategory: "face-care", productType: "Face Wash" },
@@ -69,15 +69,15 @@ function normalizeCategory(category) {
  */
 function findCategoryMapping(oldCategory, productName = '', audienceGender = null) {
   if (!oldCategory) return null
-  
+
   const normalized = normalizeCategory(oldCategory)
   const nameLower = (productName || '').toLowerCase()
-  
+
   // Direct match
   if (categoryMapping[normalized]) {
     return categoryMapping[normalized]
   }
-  
+
   // Partial match (e.g., "men's jeans" -> "jeans")
   for (const [key, value] of Object.entries(categoryMapping)) {
     if (normalized.includes(key) || key.includes(normalized)) {
@@ -94,7 +94,7 @@ function findCategoryMapping(oldCategory, productName = '', audienceGender = nul
       return value
     }
   }
-  
+
   // Check product name for clues
   if (productName) {
     for (const [key, value] of Object.entries(categoryMapping)) {
@@ -113,14 +113,14 @@ function findCategoryMapping(oldCategory, productName = '', audienceGender = nul
       }
     }
   }
-  
+
   // Check if it's already a proper category
   const properCategories = ["Men's Wear", "Women's Wear", "Kids Wear", "Footwear", "Perfumes", "Personal Care"]
   if (properCategories.some(cat => normalized.includes(cat.toLowerCase()))) {
     // It's already a proper category, just extract subcategory from productType
     return null
   }
-  
+
   return null
 }
 
@@ -133,32 +133,32 @@ async function migrateProductCategories() {
     let updatedCount = 0
     let skippedCount = 0
     const updates = []
-    
+
     for (const product of products) {
       const oldCategory = product.category
       const mapping = findCategoryMapping(
-        oldCategory, 
-        product.name, 
+        oldCategory,
+        product.name,
         product.audience?.gender
       )
-      
+
       if (mapping) {
         // Update product
         const updateData = {
           category: mapping.category,
           subcategory: mapping.subcategory
         }
-        
+
         // Update productType if not set or if it's the same as old category
         if (!product.productType || normalizeCategory(product.productType) === normalizeCategory(oldCategory)) {
           updateData.productType = mapping.productType
         }
-        
+
         await Product.updateOne(
           { _id: product._id },
           { $set: updateData }
         )
-        
+
         updatedCount++
         updates.push({
           productId: product._id,
@@ -172,10 +172,10 @@ async function migrateProductCategories() {
         // Check if category is already correct but subcategory is missing
         const properCategories = ["Men's Wear", "Women's Wear", "Kids Wear", "Footwear", "Perfumes", "Personal Care"]
         const normalizedCategory = normalizeCategory(oldCategory)
-        const isProperCategory = properCategories.some(cat => 
+        const isProperCategory = properCategories.some(cat =>
           normalizedCategory.includes(cat.toLowerCase()) || cat.toLowerCase().includes(normalizedCategory)
         )
-        
+
         if (isProperCategory && !product.subcategory && product.productType) {
           // Category is correct, just populate subcategory
           const subcategory = product.productType.toLowerCase().replace(/\s+/g, '-')
@@ -197,7 +197,7 @@ async function migrateProductCategories() {
         }
       }
     }
-    
+
     return {
       success: true,
       totalProducts: products.length,

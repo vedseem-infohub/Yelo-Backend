@@ -41,34 +41,26 @@ exports.getAllProducts = async (req, res) => {
       search
     } = req.query
 
-    const query = { isActive: isActive !== 'false' }
+    const query = {
+      isActive: isActive !== 'false',
+      price: { $type: "number", $gte: 0 }
+    }
 
-    // Search filter - fuzzy search in name, brand, category
     if (search && search.trim()) {
       const searchTerm = search.trim()
 
-      // Normalize search term: remove hyphens, normalize spaces, handle common variations
       const normalizedSearch = searchTerm
-        .replace(/[-_]/g, ' ')  // Replace hyphens and underscores with spaces
-        .replace(/\s+/g, ' ')    // Normalize multiple spaces to single space
+        .replace(/[-_]/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim()
 
-      // Create a flexible regex pattern that matches:
-      // - With or without spaces (sweatshirt, sweat shirt)
-      // - With or without hyphens (sweat-shirt, sweat shirt)
-      // - Word parts in any order (sweat shirt matches "sweatshirt")
       const words = normalizedSearch.split(/\s+/).filter(w => w.length > 0)
 
-      // Pattern: match all words with optional spaces/hyphens/underscores between them
-      // This handles: "sweatshirt", "sweat shirt", "sweat-shirt", "sweat_shirt", etc.
       const fuzzyPattern = words.length > 1
         ? new RegExp(words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[-_\\s]*'), 'i')
         : new RegExp(normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-
-      // Also create pattern without spaces (for matching compound words)
       const noSpacePattern = new RegExp(normalizedSearch.replace(/\s+/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
 
-      // Build $or query with both patterns
       query.$or = [
         { name: fuzzyPattern },
         { name: noSpacePattern },
@@ -93,7 +85,6 @@ exports.getAllProducts = async (req, res) => {
 
     // Price filter
     if (minPrice || maxPrice) {
-      query.price = {}
       if (minPrice) query.price.$gte = Number(minPrice)
       if (maxPrice) query.price.$lte = Number(maxPrice)
     }
@@ -112,7 +103,7 @@ exports.getAllProducts = async (req, res) => {
     const skip = (Number(page) - 1) * Number(limit)
 
     // Log query details for debugging
-  
+
     const queryStartTime = Date.now()
 
     // Add query timeout (30 seconds) to prevent hanging
@@ -125,7 +116,7 @@ exports.getAllProducts = async (req, res) => {
       .lean()
 
     const queryTime = Date.now() - queryStartTime
- 
+
 
     // Add timeout for count as well
     const countStartTime = Date.now()
@@ -197,7 +188,6 @@ exports.getProductBySlug = async (req, res) => {
 
     let product = null
 
-    // Check if it's vendor-slug/product-slug format (SEO-friendly)
     if (slug.includes('/')) {
       const parts = slug.split('/')
       if (parts.length === 2) {
@@ -210,7 +200,6 @@ exports.getProductBySlug = async (req, res) => {
       }
     }
 
-    // If not found, try exact slug match (backward compatibility)
     if (!product) {
       product = await Product.findOne({
         slug: slug.toLowerCase(),
@@ -225,7 +214,6 @@ exports.getProductBySlug = async (req, res) => {
       })
     }
 
-    // Add SEO-friendly URL to response
     const responseData = {
       ...product,
       seoUrl: product.vendorSlug && product.baseSlug
@@ -245,7 +233,6 @@ exports.getProductBySlug = async (req, res) => {
   }
 }
 
-// GET products by vendor slug
 exports.getProductsByVendor = async (req, res) => {
   try {
     const { vendorSlug } = req.params
@@ -272,7 +259,7 @@ exports.getProductsByVendor = async (req, res) => {
 
     const products = await Product.find(query)
       .allowDiskUse(true)
-      .maxTimeMS(30000) // 30 second timeout
+      .maxTimeMS(30000)
       .sort(sortQuery)
       .skip(skip)
       .limit(Number(limit))
@@ -280,7 +267,6 @@ exports.getProductsByVendor = async (req, res) => {
 
     const total = await Product.countDocuments(query).maxTimeMS(30000)
 
-    // Add SEO-friendly URLs to products
     const productsWithSeoUrl = products.map(product => ({
       ...product,
       seoUrl: product.vendorSlug && product.baseSlug
@@ -306,7 +292,6 @@ exports.getProductsByVendor = async (req, res) => {
   }
 }
 
-// GET products by shop slug
 exports.getProductsByShop = async (req, res) => {
   try {
     const { shopSlug } = req.params
@@ -322,7 +307,7 @@ exports.getProductsByShop = async (req, res) => {
 
     res.json({
       success: true,
-      products: result.products || [], // Also include 'products' key for frontend compatibility
+      products: result.products || [],
       data: result.products || [],
       pagination: result.pagination || {
         page: Number(page),
@@ -334,7 +319,6 @@ exports.getProductsByShop = async (req, res) => {
     })
   } catch (err) {
     console.error('Error in getProductsByShop:', err)
-    // Return empty array instead of error
     res.json({
       success: true,
       data: [],
@@ -349,7 +333,6 @@ exports.getProductsByShop = async (req, res) => {
   }
 }
 
-// GET products by category and subcategory (paginated)
 exports.getProductsByCategory = async (req, res) => {
   try {
     const {
@@ -362,7 +345,6 @@ exports.getProductsByCategory = async (req, res) => {
       maxPrice
     } = req.query
 
-    // If no category or subcategory provided, return empty
     if (!categorySlug && !subcategorySlug) {
       return res.json({
         success: true,
@@ -379,25 +361,22 @@ exports.getProductsByCategory = async (req, res) => {
 
     const query = { isActive: true }
 
-    // Build category match conditions - handle slug to name conversion
     if (categorySlug) {
       const categoryConditions = [
         { category: categorySlug },
         { category: { $regex: new RegExp(`^${categorySlug}$`, 'i') } }
       ]
 
-      // Convert slug to name variations (e.g., "women's-wear" -> "Women's Wear", "womens-wear" -> "Women's Wear")
       const categoryNameFromSlug = categorySlug
-        .replace(/-/g, ' ')  // Replace hyphens with spaces
-        .replace(/\b\w/g, l => l.toUpperCase())  // Capitalize first letter of each word
-        .replace(/Womens/g, "Women's")  // Handle "womens" -> "Women's"
-        .replace(/Mens/g, "Men's")  // Handle "mens" -> "Men's"
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase())
+        .replace(/Womens/g, "Women's")
+        .replace(/Mens/g, "Men's")
 
       categoryConditions.push(
         { category: { $regex: new RegExp(`^${categoryNameFromSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
       )
 
-      // Also try direct name matching with various formats
       categoryConditions.push(
         { category: { $regex: new RegExp(categorySlug.replace(/[-_]/g, '[\\s_-]*'), 'i') } }
       )
@@ -405,7 +384,6 @@ exports.getProductsByCategory = async (req, res) => {
       query.$or = categoryConditions
     }
 
-    // Add subcategory filter - handle slug to name conversion and partial matching
     if (subcategorySlug) {
       const subcategoryConditions = [
         { subcategory: subcategorySlug },
@@ -414,22 +392,17 @@ exports.getProductsByCategory = async (req, res) => {
         { productType: { $regex: new RegExp(`^${subcategorySlug}$`, 'i') } }
       ]
 
-      // Convert slug to name (e.g., "womens-jackets" -> "Jackets & Coats" or "Jackets")
       const subcategoryNameFromSlug = subcategorySlug
-        .replace(/-/g, ' ')  // Replace hyphens with spaces
-        .replace(/\b\w/g, l => l.toUpperCase())  // Capitalize first letter of each word
-        .replace(/Womens |Mens |Women S |Men S /g, '')  // Remove "Womens " or "Mens " prefix
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase())
+        .replace(/Womens |Mens |Women S |Men S /g, '')
 
-      // Try exact name match
       subcategoryConditions.push(
         { subcategory: { $regex: new RegExp(`^${subcategoryNameFromSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
         { productType: { $regex: new RegExp(`^${subcategoryNameFromSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
       )
-
-      // Try partial matching (e.g., "jackets" matches "Jackets & Coats")
       const subcategoryWords = subcategoryNameFromSlug.split(/\s+/).filter(w => w.length > 2)
       if (subcategoryWords.length > 0) {
-        // Match if subcategory contains any of the words
         subcategoryWords.forEach(word => {
           subcategoryConditions.push(
             { subcategory: { $regex: new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') } },
@@ -438,13 +411,10 @@ exports.getProductsByCategory = async (req, res) => {
         })
       }
 
-      // IMPORTANT: Ensure category filter is maintained when filtering by subcategory
-      // This prevents men's-wear/jacket from showing women's jackets
-      // Combine with category conditions if they exist - use $and to ensure both category AND subcategory match
       if (query.$or) {
         query.$and = [
-          { $or: query.$or },  // Category conditions (e.g., "Men's Wear")
-          { $or: subcategoryConditions }  // Subcategory conditions (e.g., "Jackets")
+          { $or: query.$or },
+          { $or: subcategoryConditions }
         ]
         delete query.$or
       } else {
