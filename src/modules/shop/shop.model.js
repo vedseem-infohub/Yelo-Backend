@@ -5,8 +5,7 @@ const shopSchema = new mongoose.Schema(
     slug: {
       type: String,
       required: true,
-      unique: true,
-      index: true
+      unique: true
     },
 
     name: {

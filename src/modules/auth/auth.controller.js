@@ -1,26 +1,49 @@
-const { firebaseLogin } = require("./auth.service")
+const { requestOTP, verifyOTP } = require("./auth.service")
 
-async function firebaseLoginHandler(req, res) {
+async function requestOTPHandler(req, res) {
   try {
-    const { idToken } = req.body
+    const { phone } = req.body
 
-    if (!idToken) {
+    if (!phone) {
       return res.status(400).json({
         success: false,
-        message: "ID token is required"
+        message: "Phone number is required"
       })
     }
 
-    const data = await firebaseLogin(idToken)
+    await requestOTP(phone)
+
+    res.json({
+      success: true,
+      message: "OTP sent successfully"
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
+
+async function verifyOTPHandler(req, res) {
+  try {
+    const { phone, code } = req.body
+
+    if (!phone || !code) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone and code are required"
+      })
+    }
+
+    const data = await verifyOTP(phone, code)
 
     res.json({
       success: true,
       ...data
     })
   } catch (err) {
-    // Return more specific error codes
-    const statusCode = err.message.includes("verification failed") || err.message.includes("token") ? 401 : 500
-    
+    const statusCode = err.message.includes("Invalid") || err.message.includes("expired") ? 401 : 500
     res.status(statusCode).json({
       success: false,
       message: err.message
@@ -28,4 +51,5 @@ async function firebaseLoginHandler(req, res) {
   }
 }
 
-module.exports = { firebaseLoginHandler }
+module.exports = { requestOTPHandler, verifyOTPHandler }
+

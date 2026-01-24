@@ -103,8 +103,6 @@ const orderSchema = new mongoose.Schema(
 )
 
 // Add indexes for better query performance
-orderSchema.index({ _id: 1 }) // Already exists by default, but explicit for clarity
-orderSchema.index({ userId: 1 }) // Already exists from schema definition
 orderSchema.index({ createdAt: -1 }) // For sorting by date
 orderSchema.index({ orderStatus: 1, createdAt: -1 }) // For filtering by status and sorting
 

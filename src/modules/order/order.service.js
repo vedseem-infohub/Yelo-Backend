@@ -2,11 +2,16 @@ const Order = require("./order.model")
 const VendorOrder = require("./vendorOrder.model")
 const Cart = require("../cart/cart.model")
 const Vendor = require("../vendors/vendors.model")
+const User = require("../user/user.model")
+const { sendWhatsAppMessage } = require("../../utils/twilio.utils")
 
 async function placeOrder(userId, orderData = {}) {
   let orderItems = []
   let totalAmount = 0
   let itemsForVendorGrouping = []
+
+  // Get user details for notification
+  const user = await User.findById(userId)
 
   // Check if items are provided directly in orderData (from checkout)
   if (orderData.items && orderData.items.length > 0) {
@@ -22,7 +27,6 @@ async function placeOrder(userId, orderData = {}) {
     
     // For vendor grouping, we'll need to fetch product details
     const Product = require("../product/product.model")
-    const Vendor = require("../vendors/vendors.model")
     
     for (const item of orderData.items) {
       const product = await Product.findById(item.productId)
@@ -86,6 +90,7 @@ async function placeOrder(userId, orderData = {}) {
   }
 
   // 4) Create VendorOrders
+  const vendorOrdersSummary = []
   for (const vendorId of Object.keys(byVendor)) {
     const vendor = await Vendor.findById(vendorId)
     const items = byVendor[vendorId]
@@ -101,12 +106,18 @@ async function placeOrder(userId, orderData = {}) {
       0
     )
 
-    await VendorOrder.create({
+    const vOrder = await VendorOrder.create({
       orderId: order._id,
       vendorId,
       vendorName: vendor ? vendor.name : "Unknown Vendor",
       items: vendorItems,
       subtotal
+    })
+
+    vendorOrdersSummary.push({
+      vendorName: vendor ? vendor.name : "Unknown Vendor",
+      itemsCount: vendorItems.length,
+      subtotal: subtotal
     })
   }
 
@@ -117,8 +128,63 @@ async function placeOrder(userId, orderData = {}) {
     await cart.save()
   }
 
+  // 6) Send WhatsApp notification to Admin
+  const adminWhatsAppNumber = "+916393818467"
+  const orderItemsFormatted = itemsForVendorGrouping.map(i => 
+    `- ${i.productId.name || 'Product'} (x${i.quantity}) - ₹${i.priceAtAdd}`
+  ).join('\n')
+
+  const address = orderData.deliveryAddress || {}
+  const addressStr = `${address.address || address.addressLine1 || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''}`
+  
+  const whatsappBody = `🛍️ *New Order Received!*
+
+*Order ID:* ${order._id}
+*Customer:* ${user?.name || 'Unknown'} (${user?.phone || 'No phone'})
+*Total Amount:* ₹${totalAmount}
+*Payment Method:* ${orderData.paymentMethod || 'N/A'}
+
+*Items:*
+${orderItemsFormatted}
+
+*Delivery Address:*
+${addressStr}
+${address.phone ? `*Contact:* ${address.phone}` : ''}
+
+*Vendor Breakdown:*
+${vendorOrdersSummary.map(vo => `- ${vo.vendorName}: ₹${vo.subtotal}`).join('\n')}
+
+View details in Admin Panel.`
+
+  await sendWhatsAppMessage(adminWhatsAppNumber, whatsappBody)
+
+  // 7) Send WhatsApp confirmation to Customer
+  const customerPhone = address.phone || user?.phone
+  if (customerPhone) {
+    const customerWhatsappBody = `✅ *Order Confirmed!*
+    
+Hi ${user?.name || 'there'}, thank you for shopping with *YEAHLO*! 
+
+Your order *#${order._id}* has been placed successfully.
+
+*Total Amount:* ₹${totalAmount}
+*Items:* ${orderItems.length} items
+
+We'll notify you once your package is on its way. 🛍️
+
+Track your order in the app profile section.`
+
+    // Clean phone number (ensure only numbers)
+    const cleanPhone = customerPhone.replace(/\D/g, '')
+    // Ensure it has country code for Twilio
+    const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone
+    
+    await sendWhatsAppMessage(formattedPhone, customerWhatsappBody)
+  }
+
   return order
 }
+
 
 module.exports = {
   placeOrder

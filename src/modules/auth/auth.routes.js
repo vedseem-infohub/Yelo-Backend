@@ -1,6 +1,8 @@
 const router = require("express").Router()
-const { firebaseLoginHandler } = require("./auth.controller")
+const { requestOTPHandler, verifyOTPHandler } = require("./auth.controller")
 
-router.post("/firebase-login", firebaseLoginHandler)
+router.post("/request-otp", requestOTPHandler)
+router.post("/verify-otp", verifyOTPHandler)
 
 module.exports = router
+

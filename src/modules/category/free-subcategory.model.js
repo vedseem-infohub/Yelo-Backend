@@ -45,7 +45,6 @@ const freeSubcategorySchema = new mongoose.Schema(
 )
 
 // Index for faster lookups
-freeSubcategorySchema.index({ slug: 1 })
 freeSubcategorySchema.index({ originalCategorySlug: 1 })
 freeSubcategorySchema.index({ isActive: 1 })
 
