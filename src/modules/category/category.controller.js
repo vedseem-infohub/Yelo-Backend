@@ -448,6 +448,7 @@ exports.updateSubcategory = async (req, res) => {
 exports.deleteSubcategory = async (req, res) => {
   try {
     const Category = require("./category.model")
+    const FreeSubcategory = require("./free-subcategory.model")
     const { slug, subcategorySlug } = req.params
 
     const category = await Category.findOne({ slug })
@@ -466,17 +467,35 @@ exports.deleteSubcategory = async (req, res) => {
       })
     }
 
-    // Soft delete - set isActive to false
-    category.subcategories[subIndex].isActive = false
+    const subcategory = category.subcategories[subIndex]
+
+    // Move to FreeSubcategory before deleting to preserve product associations
+    const existingFree = await FreeSubcategory.findOne({ slug: subcategorySlug })
+    if (!existingFree) {
+      await FreeSubcategory.create({
+        name: subcategory.name,
+        slug: subcategory.slug,
+        image: subcategory.image || null,
+        icon: subcategory.icon || null,
+        productCount: subcategory.productCount || 0,
+        originalCategorySlug: category.slug,
+        originalCategoryName: category.name,
+        isActive: subcategory.isActive !== false
+      })
+    }
+
+    // Hard delete - remove from array
+    category.subcategories.splice(subIndex, 1)
     await category.save()
 
     await updateCategoryCounts()
 
     res.json({
       success: true,
-      message: "Subcategory deleted successfully"
+      message: "Subcategory deleted successfully and moved to free subcategories"
     })
   } catch (err) {
+    console.error('Error deleting subcategory:', err)
     res.status(500).json({
       success: false,
       message: err.message
