@@ -1,5 +1,6 @@
 const Product = require("./product.model")
 const Category = require("../category/category.model")
+const Shop = require("../shop/shop.model")
 const { getProductsByShop, createProduct: createProductService } = require("./product.service")
 const { ensureCategory } = require("../category/category.service")
 
@@ -219,6 +220,18 @@ exports.getProductBySlug = async (req, res) => {
       seoUrl: product.vendorSlug && product.baseSlug
         ? `${product.vendorSlug}/${product.baseSlug}`
         : product.slug
+    }
+
+    // Populate vendorName from Shop if vendorSlug exists
+    if (product.vendorSlug) {
+      try {
+        const shop = await Shop.findOne({ slug: product.vendorSlug }).select('name').lean()
+        if (shop) {
+          responseData.vendorName = shop.name
+        }
+      } catch (err) {
+        console.error('Error fetching vendor name:', err)
+      }
     }
 
     res.json({

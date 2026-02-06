@@ -31,7 +31,7 @@ const User = require("./user.model");
 async function updateProfile(req, res) {
   try {
     const userId = req.user.userId;
-    const { name, email, avatar } = req.body;
+    const { name, email, avatar, phone, isProfileComplete } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({
@@ -40,17 +40,25 @@ async function updateProfile(req, res) {
       });
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        name,
-        email,
-        phone, // Allow updating phone number (for account setup)
-        avatar,
-        isProfileComplete: true
-      },
-      { new: true }
-    ).select("name email phone avatar isProfileComplete");
+    const update = {
+      name,
+      email,
+      avatar,
+    };
+
+    // Allow updating phone number (for account setup flows like setupAccount_mail)
+    if (typeof phone !== "undefined") {
+      update.phone = phone;
+    }
+
+    // If caller explicitly sends isProfileComplete (e.g. setupAccount_mail), honor it;
+    // otherwise default to true to keep existing behavior for phone OTP flow.
+    update.isProfileComplete =
+      typeof isProfileComplete === "boolean" ? isProfileComplete : true;
+
+    const user = await User.findByIdAndUpdate(userId, update, {
+      new: true,
+    }).select("name email phone avatar isProfileComplete");
 
     res.json({ success: true, user });
   } catch (err) {
