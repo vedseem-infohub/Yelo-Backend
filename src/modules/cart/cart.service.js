@@ -24,6 +24,12 @@ async function addToCart(userId, productId, quantity = 1, size = null, color = n
     throw new Error("Product not found")
   }
 
+  // --- STOCK CHECK START ---
+  if (product.stock < quantity) {
+    throw new Error(`Insufficient stock. Only ${product.stock} items available.`)
+  }
+  // --- STOCK CHECK END ---
+
   let vendorId = product.vendorId
 
   // 🔥 FIX: vendorId missing but vendorSlug present
@@ -65,14 +71,20 @@ async function addToCart(userId, productId, quantity = 1, size = null, color = n
   }
 
   const existingItem = cart.items.find(
-    item => 
+    item =>
       item.productId.toString() === productId &&
       item.size === size &&
       item.color === color
   )
 
   if (existingItem) {
-    existingItem.quantity += quantity
+    // --- STOCK CHECK FOR UPDATE START ---
+    const newQuantity = existingItem.quantity + quantity
+    if (product.stock < newQuantity) {
+      throw new Error(`Cannot add more. Only ${product.stock} items available in stock.`)
+    }
+    // --- STOCK CHECK FOR UPDATE END ---
+    existingItem.quantity = newQuantity
   } else {
     cart.items.push({
       productId,
@@ -94,7 +106,7 @@ async function updateCartItem(userId, productId, quantity, size = null, color = 
   if (!cart) return null
 
   const itemIndex = cart.items.findIndex(
-    item => 
+    item =>
       item.productId.toString() === productId &&
       (!size || item.size === size) &&
       (!color || item.color === color)
@@ -105,9 +117,19 @@ async function updateCartItem(userId, productId, quantity, size = null, color = 
   //  Remove item
   if (quantity <= 0) {
     cart.items.splice(itemIndex, 1)
-  } 
+  }
   // Update quantity
   else {
+    // --- STOCK CHECK START ---
+    // Need to fetch latest product stock to verify
+    const product = await Product.findById(productId)
+    if (product) {
+      if (product.stock < quantity) {
+        throw new Error(`Insufficient stock. Only ${product.stock} items available.`)
+      }
+    }
+    // --- STOCK CHECK END ---
+
     cart.items[itemIndex].quantity = quantity
     if (size) cart.items[itemIndex].size = size
     if (color) cart.items[itemIndex].color = color
