@@ -10,7 +10,6 @@ if (mongoUri) {
 } else {
   console.log("set no")
 }
-console.log(' PORT:', process.env.PORT || 'Using default (5000)')
 
 require('./src/server.js')
 

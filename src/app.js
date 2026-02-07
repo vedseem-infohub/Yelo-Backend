@@ -34,29 +34,29 @@ app.use(
     origin: function (origin, callback) {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true)
-      
+
       // Check if origin is in allowed list
       if (allowedOrigins.indexOf(origin) !== -1) {
         return callback(null, true)
       }
-      
+
       // Always allow localhost origins (for development and testing)
       const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)
       if (isLocalhost) {
         return callback(null, true)
       }
-      
+
       // Reject if not allowed
       callback(new Error(`Not allowed by CORS: ${origin}`))
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
-      "Content-Type", 
-      "Authorization", 
-      "Cache-Control", 
-      "Pragma", 
-      "Expires", 
+      "Content-Type",
+      "Authorization",
+      "Cache-Control",
+      "Pragma",
+      "Expires",
       "X-Requested-With",
       "Accept",
       "Origin",
