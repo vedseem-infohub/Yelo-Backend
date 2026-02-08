@@ -128,7 +128,7 @@ async function downloadInvoice(req, res) {
     // Company/Store Header
     doc.fontSize(24)
        .font('Helvetica-Bold')
-       .text('Yelo Fashion', 50, 50, { align: 'center' })
+       .text('Yeahlo Fashion', 50, 50, { align: 'center' })
     
     doc.fontSize(12)
        .font('Helvetica')
@@ -284,7 +284,7 @@ async function downloadInvoice(req, res) {
     doc.fontSize(8)
        .font('Helvetica')
        .text('Thank you for your order!', 50, 750, { align: 'center' })
-       .text('For queries, contact: support@yeloindia.com', 50, 765, { align: 'center' })
+       .text('For queries, contact: info@yeahlo.in', 50, 765, { align: 'center' })
 
     // Finalize PDF
     doc.end()
