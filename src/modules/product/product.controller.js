@@ -83,6 +83,7 @@ exports.getAllProducts = async (req, res) => {
     if (brand) query.brand = { $in: brand.split(",") }
     if (gender) query["audience.gender"] = gender
     if (isTrending === 'true') query.isTrending = true
+    if (req.query.ids) query._id = { $in: req.query.ids.split(',') }
 
     // Price filter
     if (minPrice || maxPrice) {

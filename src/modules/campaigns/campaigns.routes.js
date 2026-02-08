@@ -17,6 +17,7 @@ router.get("/:id", fetchCampaignById);
 
 router.post("/", auth, createCampaignHandler);
 router.put("/:id", auth, updateCampaignHandler);
+router.patch("/:id", auth, updateCampaignHandler); // Reuse update handler as it uses findByIdAndUpdate
 router.delete("/:id", auth, deleteCampaignHandler);
 
 module.exports = router;

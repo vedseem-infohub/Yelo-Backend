@@ -108,6 +108,7 @@ const fetchCampaignBySlug = asyncHandler(async (req, res) => {
  * Create a new campaign
  */
 const createCampaignHandler = asyncHandler(async (req, res) => {
+    console.log("Create Campaign Payload:", JSON.stringify(req.body, null, 2));
     const campaignData = req.body;
 
     // Required field validation
@@ -115,6 +116,7 @@ const createCampaignHandler = asyncHandler(async (req, res) => {
     const missingFields = requiredFields.filter((field) => !campaignData[field]);
 
     if (missingFields.length > 0) {
+        console.log("Missing fields:", missingFields);
         return res.status(400).json({
             success: false,
             message: `Missing required fields: ${missingFields.join(", ")}`,
@@ -126,6 +128,7 @@ const createCampaignHandler = asyncHandler(async (req, res) => {
     const endDate = new Date(campaignData.endDate);
 
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        console.log("Invalid dates:", startDate, endDate);
         return res.status(400).json({
             success: false,
             message: "Invalid date format",
@@ -133,6 +136,7 @@ const createCampaignHandler = asyncHandler(async (req, res) => {
     }
 
     if (endDate <= startDate) {
+        console.log("Date mismatch:", startDate, endDate);
         return res.status(400).json({
             success: false,
             message: "End date must be after start date",
@@ -140,6 +144,7 @@ const createCampaignHandler = asyncHandler(async (req, res) => {
     }
 
     const campaign = await campaignService.createCampaign(campaignData);
+    console.log("Campaign created:", campaign._id);
 
     res.status(201).json({
         success: true,
@@ -154,6 +159,7 @@ const createCampaignHandler = asyncHandler(async (req, res) => {
  */
 const updateCampaignHandler = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    console.log(`Update Campaign ${id} Payload:`, JSON.stringify(req.body, null, 2));
     const updateData = req.body;
 
     // Validate ObjectId format

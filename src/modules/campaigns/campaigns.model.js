@@ -12,6 +12,7 @@ const layoutComponentSchema = new mongoose.Schema(
             title: String,
             subtitle: String,
             shopSlug: String,
+            products: { type: [String], default: [] },
             limit: { type: Number, min: 1, max: 50, default: 8 },
             cols: { type: Number, min: 2, max: 6, default: 4 },
             text: String,
@@ -30,6 +31,7 @@ const heroSchema = new mongoose.Schema(
         title: { type: String, default: "" },
         subtitle: { type: String, default: "" },
         bannerImage: { type: String, default: "" },
+        images: { type: [String], default: [] },
         overlayOpacity: { type: Number, min: 0, max: 1, default: 0.5 },
         titleAlignment: { type: String, enum: ["left", "center"], default: "center" },
     },
@@ -92,11 +94,11 @@ campaignSchema.virtual("status").get(function () {
 });
 
 // Validation
-campaignSchema.pre("save", function (next) {
+// Validation
+campaignSchema.pre("save", function () {
     if (this.endDate <= this.startDate) {
-        return next(new Error("End date must be after start date"));
+        throw new Error("End date must be after start date");
     }
-    next();
 });
 
 // Static methods

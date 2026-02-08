@@ -111,8 +111,19 @@ async function createCampaign(campaignData) {
  * @throws {Error} - If campaign not found
  */
 async function updateCampaign(id, updateData) {
-    // Don't allow updating slug to prevent breaking URLs
-    delete updateData.slug;
+    // If slug is being updated, check for uniqueness
+    if (updateData.slug) {
+        const existing = await Campaign.findOne({
+            slug: updateData.slug,
+            _id: { $ne: id } // Exclude current campaign
+        }).lean();
+
+        if (existing) {
+            const error = new Error("Campaign with this slug already exists");
+            error.statusCode = 409;
+            throw error;
+        }
+    }
 
     const campaign = await Campaign.findByIdAndUpdate(
         id,
