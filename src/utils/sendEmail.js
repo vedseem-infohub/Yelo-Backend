@@ -1,54 +1,51 @@
-const nodemailer = require("nodemailer");
+const sgMail = require("@sendgrid/mail");
 
 const sendEmail = async ({ email, subject, message, html }) => {
   try {
-    console.log(`[Mail System] Initializing transporter...`);
-    console.log(`[Mail System] Config: Host=${process.env.MAIL_HOST}, Port=${process.env.MAIL_PORT}, Secure=${process.env.MAIL_SECURE}, User=${process.env.MAIL_USER}`);
-    console.log(`[Mail System] DNS: IPv4 preferred (configured in index.js)`);
+    console.log(`[Mail System] Preparing to send email via SendGrid API...`);
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: process.env.MAIL_SECURE === "true", // true for 465, false for other ports
-      auth: {
-        user: process.env.MAIL_USER || "info@yeahlo.in",
-        pass: process.env.MAIL_PASS, // Not logging password for security
-      },
-      debug: true, // Always enable debug output for now
-      logger: true // Always enable logger for now
-    });
-
-    // Verify connection configuration
-    try {
-      console.log(`[Mail System] Verifying SMTP connection...`);
-      await transporter.verify();
-      console.log("[Mail System] SMTP Connection verified successfully");
-    } catch (verifyError) {
-      console.error("[Mail System] SMTP Connection Verification Failed:", verifyError);
-      // We might want to throw here, but let's try sending anyway or just log it specificially
+    // Ensure API Key is set (Lazy loading to handle dotenv load order)
+    if (process.env.SENDGRID_API_KEY) {
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    } else {
+      console.error("[Mail System] CRITICAL: SENDGRID_API_KEY is missing!");
+      throw new Error("SENDGRID_API_KEY is not configured in .env");
     }
 
-    const mailOptions = {
-      // Hostinger requires the sender to be the same as the authenticated user
-      from: `"YEAHLO Fashion" <${process.env.MAIL_USER}>`,
+    const senderEmail = process.env.MAIL_FROM || "info@yeahlo.in";
+    console.log(`[Mail System] Configured Sender (MAIL_FROM): ${senderEmail}`);
+
+    const msg = {
       to: email,
+      // Use verified sender identity from SendGrid
+      from: {
+        email: senderEmail,
+        name: "YEAHLO Fashion"
+      },
       subject: subject,
       text: message,
       html: html,
     };
 
-    console.log(`[Mail System] Attempting to find email to: ${email} with subject: "${subject}"`);
+    console.log(`[Mail System] Sending email to: ${email} | Subject: "${subject}"`);
+    console.log(`[Mail System] Verified Sender: ${msg.from.email} (${msg.from.name})`);
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("[Mail System] Message sent successfully!");
-    console.log("[Mail System] Message ID: %s", info.messageId);
-    console.log("[Mail System] Response: %s", info.response);
+    const response = await sgMail.send(msg);
 
-    return info;
+    // responses[0] is the response object
+    console.log("[Mail System] Email sent successfully!");
+    console.log(`[Mail System] Status Code: ${response[0].statusCode}`);
+    console.log(`[Mail System] X-Message-Id: ${response[0].headers['x-message-id']}`);
+
+    return response;
   } catch (error) {
-    console.error("[Mail System] CRITICAL ERROR sending email:", error);
-    console.error("[Mail System] Error Stack:", error.stack);
-    throw new Error("Email could not be sent: " + error.message);
+    console.error("[Mail System] CRITICAL ERROR sending email via SendGrid:", error);
+
+    if (error.response) {
+      console.error("[Mail System] SendGrid API Error Body:", JSON.stringify(error.response.body, null, 2));
+    }
+
+    throw new Error("Email could not be sent: " + (error.message || "Unknown SendGrid Error"));
   }
 };
 
