@@ -32,5 +32,6 @@ router.use("/notifications", require("../modules/notification/notification.route
 router.use("/upload", require("../modules/upload/upload.routes"))
 router.use("/user-admin", require("../modules/userAdmin/userAdmin.routes"))
 router.use("/campaigns", require("../modules/campaigns/campaigns.routes"))
+router.use("/analytics", require("../modules/analytics/analytics.routes"))
 
 module.exports = router

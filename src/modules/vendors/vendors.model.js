@@ -25,6 +25,37 @@ const vendorSchema = new mongoose.Schema(
 
     address: String,
 
+    ownerName: String,
+    owner: String,
+
+    commission: {
+      type: Number,
+      default: 15,
+      min: 0,
+      max: 100
+    },
+
+    status: {
+      type: String,
+      enum: ["PENDING", "APPROVED", "REJECTED", "ACTIVE", "INACTIVE"],
+      default: "PENDING"
+    },
+
+    totalRevenue: {
+      type: Number,
+      default: 0
+    },
+
+    revenue: {
+      type: Number,
+      default: 0
+    },
+
+    rating: {
+      type: Number,
+      default: 0
+    },
+
     isActive: {
       type: Boolean,
       default: true,

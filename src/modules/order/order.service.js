@@ -38,6 +38,18 @@ async function placeOrder(userId, orderData = {}) {
           const vendor = await Vendor.findOne({ slug: product.vendorSlug })
           vendorId = vendor?._id
         }
+        
+        // Fallback: Try to find vendor by brand name if still no vendorId
+        if (!vendorId && product.brand) {
+          const vendorByBrand = await Vendor.findOne({ 
+            $or: [
+              { name: product.brand },
+              { name: new RegExp(`^${product.brand}`, 'i') } // Match if brand is prefix (e.g., "Monarch" matches "Monarch Jhansi")
+            ]
+          })
+          vendorId = vendorByBrand?._id
+        }
+
         if (vendorId) {
           itemsForVendorGrouping.push({
             productId: product,

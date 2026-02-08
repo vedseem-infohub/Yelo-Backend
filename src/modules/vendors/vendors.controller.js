@@ -57,12 +57,48 @@ exports.getVendorById = async (req, res) => {
 }
 
 exports.updateVendor = async (req, res) => {
-  const vendor = await Vendor.findByIdAndUpdate(
-    req.params.id,
-    req.body,
-    { new: true }
-  )
-  res.json({ success: true, data: vendor })
+  try {
+    const vendor = await Vendor.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    )
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: "Vendor not found" })
+    }
+    res.json({ success: true, data: vendor })
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message })
+  }
+}
+
+// Update commission specifically
+exports.updateCommission = async (req, res) => {
+  try {
+    const { commission } = req.body
+    const commissionValue = Number(commission)
+    
+    if (isNaN(commissionValue) || commissionValue < 0 || commissionValue > 100) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Commission must be a number between 0 and 100" 
+      })
+    }
+
+    const vendor = await Vendor.findByIdAndUpdate(
+      req.params.id,
+      { commission: commissionValue },
+      { new: true, runValidators: true }
+    )
+    
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: "Vendor not found" })
+    }
+    
+    res.json({ success: true, data: vendor })
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message })
+  }
 }
 
 exports.deleteVendor = async (req, res) => {
@@ -142,6 +178,120 @@ exports.getVendorBySlug = async (req, res) => {
     res.status(500).json({
       success: false,
       message: err.message
+    })
+  }
+}
+
+// Get vendor details with products, sales, and orders (for admin)
+exports.getVendorDetails = async (req, res) => {
+  try {
+    const { id } = req.params
+    const Order = require("../order/order.model")
+    const VendorOrder = require("../order/vendorOrder.model")
+
+    // Get vendor
+    const vendor = await Vendor.findById(id).lean()
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found"
+      })
+    }
+
+    // Get ALL products (no limit) with all required fields except images
+    // Try to match by vendorSlug OR by brand matching vendor name (including partial matches like "Monarch" for "Monarch Jhansi")
+    const products = await Product.find({ 
+      $or: [
+        { vendorSlug: vendor.slug },
+        { brand: vendor.name },
+        { brand: new RegExp(vendor.name.split(' ')[0], 'i') } // Match the first word (e.g., "Monarch")
+      ],
+      isActive: true 
+    })
+    .select("name slug price stock rating reviews category subcategory isActive brand")
+    .lean()
+    .sort({ createdAt: -1 }) // Sort by newest first
+
+    const totalProducts = products.length
+
+    // Get vendor orders from VendorOrder collection
+    // Try to find by vendorId (ObjectId) or vendorName OR by matching brand in items (though VendorOrder should have it)
+    const vendorOrders = await VendorOrder.find({
+      $or: [
+        { vendorId: vendor._id },
+        { vendorName: vendor.name },
+        { vendorName: new RegExp(vendor.name.split(' ')[0], 'i') }
+      ]
+    })
+      .populate("orderId", "orderStatus paymentStatus totalAmount createdAt userId")
+      .lean()
+
+    // Calculate total sales amount (from paid orders only)
+    const totalSales = vendorOrders.reduce((sum, vo) => {
+      if (vo.orderId && vo.orderId.paymentStatus === "PAID" && vo.orderId.orderStatus !== "CANCELLED") {
+        return sum + (vo.subtotal || 0)
+      }
+      return sum
+    }, 0)
+
+    // Get order statistics
+    const totalOrders = vendorOrders.length
+    const completedOrders = vendorOrders.filter(
+      vo => vo.orderId && (vo.orderId.orderStatus === "DELIVERED" || vo.orderId.orderStatus === "COMPLETED")
+    ).length
+    const pendingOrders = vendorOrders.filter(
+      vo => vo.orderId && (vo.orderId.orderStatus === "PLACED" || vo.orderId.orderStatus === "CONFIRMED")
+    ).length
+
+    // Get ALL orders (no limit) with full order ID and commission
+    const commissionRate = vendor.commission || 0
+    const allOrders = vendorOrders
+      .filter(vo => vo.orderId)
+      .sort((a, b) => new Date(b.orderId.createdAt) - new Date(a.orderId.createdAt))
+      .map(vo => {
+        const subtotal = vo.subtotal || 0
+        const commission = (subtotal * commissionRate) / 100
+        return {
+          orderId: vo.orderId._id.toString(), // Full order ID as string
+          orderStatus: vo.orderId.orderStatus,
+          paymentStatus: vo.orderId.paymentStatus,
+          totalAmount: subtotal,
+          commission: commission,
+          createdAt: vo.orderId.createdAt
+        }
+      })
+
+    // Calculate total commission
+    const totalCommission = allOrders.reduce((sum, order) => {
+      if (order.paymentStatus === "PAID" && order.orderStatus !== "CANCELLED") {
+        return sum + order.commission
+      }
+      return sum
+    }, 0)
+
+    res.json({
+      success: true,
+      data: {
+        vendor,
+        products: {
+          list: products,
+          total: totalProducts
+        },
+        sales: {
+          totalSales,
+          totalOrders,
+          completedOrders,
+          pendingOrders,
+          totalCommission
+        },
+        orders: allOrders
+      }
+    })
+  } catch (err) {
+    console.error("Error fetching vendor details:", err)
+    res.status(500).json({
+      success: false,
+      message: err.message || "Failed to fetch vendor details"
     })
   }
 }
